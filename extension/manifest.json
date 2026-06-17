@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Phishing URL Guardian",
+  "version": "1.0",
+  "description": "Real-time phishing URL detection using ML.",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Phishing URL Guardian"
+  }
+}

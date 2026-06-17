@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Phishing URL Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #21262d;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --red:       #f85149;
+      --orange:    #e3b341;
+      --yellow:    #d29922;
+      --green:     #3fb950;
+      --radius:    12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem;
+    }
+
+    /* ---- Header ---- */
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--accent);
+      background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.2);
+      padding: 4px 12px; border-radius: 20px; margin-bottom: 1rem;
+    }
+    header h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.5px; }
+    header p  { color: var(--muted); margin-top: 0.5rem; font-size: 0.95rem; }
+
+    /* ---- Card ---- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      width: 100%; max-width: 680px;
+    }
+
+    /* ---- Input row ---- */
+    .input-row {
+      display: flex; gap: 10px;
+    }
+    .input-row input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 0.7rem 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--muted); }
+
+    .btn {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 0.7rem 1.4rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---- Options ---- */
+    .options {
+      display: flex; gap: 1.2rem; margin-top: 1rem;
+    }
+    .options label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--muted); cursor: pointer;
+    }
+    .options input[type=checkbox] { accent-color: var(--accent); }
+
+    /* ---- Divider ---- */
+    .divider {
+      border: none; border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    /* ---- Result ---- */
+    #result { display: none; }
+
+    .verdict {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1.2rem 1.4rem;
+      border-radius: 10px;
+      margin-bottom: 1.2rem;
+      border: 1px solid;
+    }
+    .verdict.phishing  { background: rgba(248,81,73,0.08);  border-color: rgba(248,81,73,0.3);  }
+    .verdict.safe      { background: rgba(63,185,80,0.08);  border-color: rgba(63,185,80,0.3);  }
+    .verdict.medium    { background: rgba(227,179,65,0.08); border-color: rgba(227,179,65,0.3); }
+
+    .verdict-emoji { font-size: 2rem; line-height: 1; }
+    .verdict-label { font-size: 1.3rem; font-weight: 700; }
+    .verdict-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .verdict-conf {
+      margin-left: auto; text-align: right;
+    }
+    .verdict-conf .conf-val {
+      font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    }
+    .verdict-conf .conf-label { font-size: 11px; color: var(--muted); }
+
+    /* ---- Gauge bar ---- */
+    .gauge-wrap { margin-bottom: 1.2rem; }
+    .gauge-label {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--muted); margin-bottom: 6px;
+    }
+    .gauge-track {
+      background: var(--surface2); border-radius: 6px; height: 8px; overflow: hidden;
+    }
+    .gauge-fill {
+      height: 100%; border-radius: 6px;
+      transition: width 0.8s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ---- Model breakdown ---- */
+    .model-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-bottom: 1.2rem;
+    }
+    .model-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.9rem 1rem;
+    }
+    .model-card .mc-name { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .model-card .mc-val  { font-size: 1.1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .model-card .mc-bar-track { background: var(--border); border-radius: 4px; height: 4px; margin-top: 8px; }
+    .model-card .mc-bar-fill  { height: 100%; border-radius: 4px; transition: width 0.8s; }
+
+    /* ---- Flagged features ---- */
+    .section-title {
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 0.8rem;
+    }
+    .flags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.2rem; }
+    .flag-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.25);
+      border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; color: #f85149;
+    }
+
+    /* ---- URL display ---- */
+    .url-display {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--muted); word-break: break-all; margin-bottom: 1.2rem;
+    }
+
+    /* ---- Latency ---- */
+    .meta {
+      display: flex; justify-content: flex-end;
+      font-size: 11px; color: var(--muted); margin-top: 0.5rem;
+    }
+
+    /* ---- Loading spinner ---- */
+    #loading { display: none; text-align: center; padding: 1.5rem 0; color: var(--muted); font-size: 14px; }
+    .spinner {
+      width: 28px; height: 28px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.7s linear infinite; margin: 0 auto 0.8rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Error ---- */
+    #error {
+      display: none; background: rgba(248,81,73,0.08);
+      border: 1px solid rgba(248,81,73,0.3); border-radius: 8px;
+      padding: 0.9rem 1.1rem; color: var(--red); font-size: 13px; margin-top: 1rem;
+    }
+
+    /* ---- Examples ---- */
+    .examples { margin-top: 1.5rem; width: 100%; max-width: 680px; }
+    .examples p { font-size: 12px; color: var(--muted); margin-bottom: 0.6rem; }
+    .example-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .example-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      color: var(--muted); cursor: pointer; transition: border-color 0.15s;
+    }
+    .example-chip:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">🛡️ ML-Powered</div>
+    <h1>Phishing URL Detector</h1>
+    <p>Paste any URL to check if it's safe or a phishing attempt</p>
+  </header>
+
+  <div class="card">
+    <div class="input-row">
+      <input id="urlInput" type="text" placeholder="https://example.com/page?id=123" autocomplete="off" spellcheck="false"/>
+      <button class="btn" id="checkBtn" onclick="checkURL()">Analyse</button>
+    </div>
+
+    <div class="options">
+      <label><input type="checkbox" id="optHost"/> DNS / WHOIS check <span style="font-size:11px">(+1–2s)</span></label>
+      <label><input type="checkbox" id="optPage"/> Page content scan <span style="font-size:11px">(+3–5s)</span></label>
+    </div>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      Analysing URL...
+    </div>
+
+    <div id="error"></div>
+
+    <!-- Result panel -->
+    <div id="result">
+      <hr class="divider"/>
+
+      <!-- URL echo -->
+      <div class="url-display" id="urlEcho"></div>
+
+      <!-- Verdict banner -->
+      <div class="verdict" id="verdictBanner">
+        <div class="verdict-emoji" id="verdictEmoji"></div>
+        <div>
+          <div class="verdict-label" id="verdictLabel"></div>
+          <div class="verdict-sub"  id="verdictSub"></div>
+        </div>
+        <div class="verdict-conf">
+          <div class="conf-val"   id="confVal"></div>
+          <div class="conf-label">phishing probability</div>
+        </div>
+      </div>
+
+      <!-- Confidence gauge -->
+      <div class="gauge-wrap">
+        <div class="gauge-label">
+          <span>Safe</span><span>Phishing</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-fill" id="gaugeFill"></div>
+        </div>
+      </div>
+
+      <!-- Model breakdown -->
+      <div class="section-title">Model Breakdown</div>
+      <div class="model-row">
+        <div class="model-card">
+          <div class="mc-name">XGBoost</div>
+          <div class="mc-val" id="xgbVal"></div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="xgbBar"></div></div>
+        </div>
+        <div class="model-card">
+          <div class="mc-name">Random Forest</div>
+          <div class="mc-val" id="rfVal"></div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="rfBar"></div></div>
+        </div>
+      </div>
+
+      <!-- Flagged features -->
+      <div id="flagsSection">
+        <div class="section-title">Flagged Signals</div>
+        <div class="flags" id="flagsList"></div>
+      </div>
+      
+      <!-- DNS / Page Results -->
+<div id="extraInfo" style="display:none; margin-top:1rem;">
+  <div class="section-title">Additional Analysis</div>
+  <div id="extraList" style="display:flex; flex-direction:column; gap:8px;"></div>
+</div>
+
+      <div class="meta" id="latency"></div>
+      <div style="margin-top:1rem;text-align:center">
+        <button class="btn" id="reportBtn" style="background:transparent;border:1px solid var(--accent);color:var(--accent);display:none" onclick="openReport()">
+          View Full Report →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Example URLs -->
+  <div class="examples">
+    <p>Try an example:</p>
+    <div class="example-chips">
+      <span class="example-chip" onclick="setURL(this)">https://www.google.com</span>
+      <span class="example-chip" onclick="setURL(this)">http://paypa1-secure-login.com/verify?user=test@gmail.com</span>
+      <span class="example-chip" onclick="setURL(this)">http://192.168.1.1/admin/login</span>
+      <span class="example-chip" onclick="setURL(this)">https://bit.ly/3xYzAbC</span>
+    </div>
+  </div>
+
+  <script>
+    function setURL(el) {
+      document.getElementById("urlInput").value = el.textContent.trim();
+    }
+
+    function riskColor(prob) {
+      if (prob >= 0.80) return "#f85149";
+      if (prob >= 0.50) return "#e3b341";
+      if (prob >= 0.30) return "#d29922";
+      return "#3fb950";
+    }
+
+    async function checkURL() {
+      const url     = document.getElementById("urlInput").value.trim();
+      const optHost = document.getElementById("optHost").checked;
+      const optPage = document.getElementById("optPage").checked;
+      const btn     = document.getElementById("checkBtn");
+      const errEl   = document.getElementById("error");
+
+      if (!url) { showError("Please enter a URL."); return; }
+
+      // Reset UI
+      document.getElementById("result").style.display  = "none";
+      document.getElementById("loading").style.display = "block";
+      errEl.style.display = "none";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, include_host: optHost, include_page: optPage }),
+        });
+        const data = await res.json();
+
+        if (data.error) { showError(data.error); return; }
+        renderResult(data);
+
+      } catch (e) {
+        showError("Could not reach the server. Is Flask running?");
+      } finally {
+        document.getElementById("loading").style.display = "none";
+        btn.disabled = false;
+      }
+    }
+
+    function renderResult(d) {
+      const prob  = d.confidence;
+      const color = riskColor(prob);
+
+      // URL echo
+      document.getElementById("urlEcho").textContent = d.url;
+
+      // Verdict banner
+      const banner = document.getElementById("verdictBanner");
+      banner.className = "verdict " + (d.is_phishing ? "phishing" : (prob >= 0.3 ? "medium" : "safe"));
+      document.getElementById("verdictEmoji").textContent = d.risk.emoji;
+      document.getElementById("verdictLabel").textContent = d.label;
+      document.getElementById("verdictSub").textContent   =
+        `Risk level: ${d.risk.level}  •  Ensemble of XGBoost + Random Forest`;
+      document.getElementById("confVal").textContent      = (prob * 100).toFixed(1) + "%";
+      document.getElementById("confVal").style.color      = color;
+
+      // Gauge
+      const gf = document.getElementById("gaugeFill");
+      gf.style.width      = (prob * 100) + "%";
+      gf.style.background = color;
+
+      // Model cards
+      const xgbP = d.xgb_prob;
+      const rfP  = d.rf_prob;
+      document.getElementById("xgbVal").textContent     = (xgbP * 100).toFixed(1) + "%";
+      document.getElementById("xgbVal").style.color     = riskColor(xgbP);
+      document.getElementById("xgbBar").style.width     = (xgbP * 100) + "%";
+      document.getElementById("xgbBar").style.background= riskColor(xgbP);
+
+      document.getElementById("rfVal").textContent      = (rfP * 100).toFixed(1) + "%";
+      document.getElementById("rfVal").style.color      = riskColor(rfP);
+      document.getElementById("rfBar").style.width      = (rfP * 100) + "%";
+      document.getElementById("rfBar").style.background = riskColor(rfP);
+
+      // Flagged features
+      const flags    = d.top_features || [];
+      const flagsEl  = document.getElementById("flagsList");
+      const flagsSec = document.getElementById("flagsSection");
+      flagsEl.innerHTML = "";
+
+      if (flags.length > 0) {
+        flagsSec.style.display = "block";
+        flags.forEach(f => {
+          const chip = document.createElement("span");
+          chip.className   = "flag-chip";
+          chip.textContent = `⚠ ${f.feature}: ${f.value}`;
+          flagsEl.appendChild(chip);
+        });
+      } else {
+        flagsSec.style.display = "none";
+      }
+
+      // Latency
+      document.getElementById("latency").textContent = `Analysed in ${d.latency_ms}ms`;
+
+      // DNS / Page extra info
+    const extra = document.getElementById('extraInfo');
+    const extraList = document.getElementById('extraList');
+    const f = d.features || {};
+    let extraHtml = '';
+
+    if (f.dns_resolves !== undefined) {
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted)">DNS Resolves</span>
+        <span style="color:${f.dns_resolves ? '#3fb950' : '#f85149'};font-weight:600">${f.dns_resolves ? '✅ Yes' : '❌ No'}</span>
+      </div>`;
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted)">Domain Age</span>
+        <span style="font-weight:600;color:${f.domain_age_days < 0 ? 'var(--muted)' : f.domain_age_days < 180 ? '#f85149' : '#3fb950'}">${f.domain_age_days < 0 ? 'Unknown' : f.domain_age_days + ' days'}</span>
+      </div>`;
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted)">New Domain</span>
+        <span style="font-weight:600;color:${f.is_new_domain ? '#f85149' : '#3fb950'}">${f.is_new_domain ? '⚠ Yes' : '✅ No'}</span>
+      </div>`;
+    }
+
+    if (f.num_forms !== undefined) {
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted)">Forms on Page</span>
+        <span style="font-weight:600">${f.num_forms}</span>
+      </div>`;
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted)">Password Field</span>
+        <span style="font-weight:600;color:${f.has_password_field ? '#f85149' : '#3fb950'}">${f.has_password_field ? '⚠ Detected' : '✅ None'}</span>
+      </div>`;
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--muted)">Redirects</span>
+        <span style="font-weight:600;color:${f.num_redirects > 2 ? '#f85149' : '#3fb950'}">${f.num_redirects}</span>
+      </div>`;
+      extraHtml += `<div style="font-size:13px;display:flex;justify-content:space-between;padding:6px 0;">
+        <span style="color:var(--muted)">Title/Domain Mismatch</span>
+        <span style="font-weight:600;color:${f.title_domain_mismatch ? '#f85149' : '#3fb950'}">${f.title_domain_mismatch ? '⚠ Yes' : '✅ No'}</span>
+      </div>`;
+    }
+
+    if (extraHtml) {
+      extraList.innerHTML = extraHtml;
+      extra.style.display = 'block';
+    } else {
+      extra.style.display = 'none';
+    }
+
+      document.getElementById("result").style.display = "block";
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("error");
+      el.textContent      = "⚠ " + msg;
+      el.style.display    = "block";
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("checkBtn").disabled     = false;
+    }
+
+    // Allow Enter key to trigger analysis
+    document.getElementById("urlInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") checkURL();
+    });
+
+    function openReport() {
+      const url = document.getElementById("urlInput").value.trim();
+      window.open(`/report?url=${encodeURIComponent(url)}`, '_blank');
+    }
+
+    // Show report button after result renders
+    const origRender = renderResult;
+    window.renderResult = function(d) {
+      origRender(d);
+      document.getElementById("reportBtn").style.display = "inline-block";
+    }
+  </script>
+</body>
+</html>
