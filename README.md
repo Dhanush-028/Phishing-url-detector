@@ -1,23 +1,37 @@
 # 🛡️ Phishing URL Detector
 
-A real-time phishing URL detection system powered by Machine Learning, built as a Final Year Project in Cybersecurity.
+A real-time phishing URL detection system powered by Machine Learning, built a simple Project in Cybersecurity.
 
 ---
 
 ## ⚙️ Live on
 
-Open `http://localhost:5000` in your browser.
+Open (https://phishing-url-detector-c6wb.onrender.com) in your browser.
 
 ---
 
 ## 📌 Project Overview
 
-Phishing attacks account for over 90% of data breaches worldwide. This system uses an ensemble of **XGBoost + Random Forest** classifiers to analyse URLs and detect phishing attempts in real-time with **92%+ accuracy**.
+Phishing URL Detector is a Machine Learning-based cybersecurity system that identifies potentially malicious URLs in real time. The system uses an ensemble of XGBoost and Random Forest classifiers trained on over 580,000 URLs to distinguish phishing websites from legitimate websites.
 
-The system uses a **3-tier feature extraction pipeline**:
-- **Tier 1 — Lexical Analysis**: URL structure, entropy, consonant ratio, suspicious keywords (instant, no network)
-- **Tier 2 — Host Analysis**: DNS resolution, WHOIS domain age (1–2s)
-- **Tier 3 — Page Analysis**: HTML forms, password fields, redirects (3–5s)
+The detector performs lexical URL analysis by extracting features such as:
+
+* URL length
+* Number of dots and hyphens
+* Subdomain depth
+* Presence of suspicious keywords
+* IP-based hostnames
+* Punycode and encoded URLs
+* Digit and character patterns
+
+The system provides:
+
+* Real-time phishing detection
+* Risk score estimation
+* Confidence analysis
+* Detailed security reports
+* Browser extension integration
+* Cloud deployment using Flask and Render
 
 ---
 
