@@ -74,13 +74,13 @@ def build_models():
     )
 
     rf = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=None,
-        min_samples_split=4,
-        class_weight="balanced",    # handles class imbalance
-        random_state=42,
-        n_jobs=-1,
-    )
+    n_estimators=25,
+    max_depth=12,
+    min_samples_split=4,
+    class_weight="balanced",
+    random_state=42,
+    n_jobs=-1,
+)
 
     # Soft voting: average predicted probabilities
     ensemble = VotingClassifier(

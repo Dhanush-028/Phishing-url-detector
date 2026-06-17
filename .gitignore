@@ -3,7 +3,5 @@ __pycache__/
 .venv/
 venv/
 .env
-model/ensemble_model.pkl
-model/rf_model.pkl
 __pycache__/
 *.pyc
